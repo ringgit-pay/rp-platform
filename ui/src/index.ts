@@ -16,6 +16,15 @@ export * from './lib/input/rp-input';
 export * from './lib/textarea/rp-textarea';
 export * from './lib/checkbox/rp-checkbox';
 export * from './lib/switch/rp-switch';
+export * from './lib/money-input/rp-money-input';
+export * from './lib/number-stepper/rp-number-stepper';
+export * from './lib/radio/rp-radio-group';
+export * from './lib/segmented/rp-segmented-control';
+export * from './lib/option-card/rp-option-card';
+export * from './lib/phone-input/rp-phone-input';
+export * from './lib/phone-input/countries';
+export * from './lib/select/rp-select';
+export * from './lib/datepicker/rp-datepicker';
 
 // data display
 export * from './lib/card/rp-card';
@@ -36,3 +45,7 @@ export * from './lib/data-table/rp-data-table';
 export * from './lib/data-table/rp-data-table.types';
 export * from './lib/data-table/rp-cell-def.directive';
 export * from './lib/data-table/rp-row-detail.directive';
+
+// mobile
+export * from './lib/bottom-nav/rp-bottom-nav';
+export * from './lib/nav-drawer/rp-nav-drawer';
