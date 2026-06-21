@@ -3,10 +3,12 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   TemplateRef,
   computed,
   contentChild,
   contentChildren,
+  inject,
   input,
   output,
   signal,
@@ -27,6 +29,10 @@ import {
 @Component({
   selector: 'rp-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:click)': 'onDocumentClick($event)',
+    '(keydown.escape)': 'closeColMenu()',
+  },
   imports: [RpIcon, RpSpinner, RpEmptyState, NgTemplateOutlet, ScrollingModule],
   template: `
     <div class="rp-dt">
@@ -37,6 +43,7 @@ import {
               <rp-icon name="search" [size]="16" />
               <input
                 type="search"
+                aria-label="Search table"
                 [placeholder]="searchPlaceholder()"
                 [value]="search()"
                 (input)="onSearch($event)"
@@ -46,11 +53,17 @@ import {
           <div class="rp-dt__toolactions">
             @if (columnManager()) {
               <div class="rp-dt__colmenu-wrap">
-                <button class="rp-dt__toolbtn" type="button" (click)="toggleColMenu()">
+                <button
+                  class="rp-dt__toolbtn"
+                  type="button"
+                  aria-haspopup="true"
+                  [attr.aria-expanded]="colMenuOpen()"
+                  (click)="toggleColMenu()"
+                >
                   <rp-icon name="settings" [size]="16" /> Columns
                 </button>
                 @if (colMenuOpen()) {
-                  <div class="rp-dt__colmenu">
+                  <div class="rp-dt__colmenu" role="menu">
                     @for (col of orderedAllColumns(); track col.key; let i = $index) {
                       <div class="rp-dt__colmenu-item">
                         <label>
@@ -110,6 +123,7 @@ import {
             <div class="rp-dt__vcell rp-dt__check-col">
               <input
                 type="checkbox"
+                aria-label="Select all rows on this page"
                 [checked]="allOnPageSelected()"
                 [indeterminate]="someOnPageSelected()"
                 (change)="toggleAll($event)"
@@ -121,18 +135,23 @@ import {
               class="rp-dt__vcell rp-dt__vhcell"
               [class]="thClass(col)"
               [style.flex]="flexFor(col)"
-              (click)="col.sortable && toggleSort(col, $event)"
+              role="columnheader"
+              [attr.aria-sort]="ariaSort(col)"
             >
-              {{ col.header }}
               @if (col.sortable) {
                 @let m = sortMeta(col);
-                <span
-                  class="rp-dt__sort"
-                  [class.rp-dt__sort--active]="m.active"
-                  [class.rp-dt__sort--asc]="m.asc"
-                >
-                  <rp-icon name="chevron-down" [size]="14" />
-                </span>
+                <button type="button" class="rp-dt__th-btn" (click)="toggleSort(col, $event)">
+                  {{ col.header }}
+                  <span
+                    class="rp-dt__sort"
+                    [class.rp-dt__sort--active]="m.active"
+                    [class.rp-dt__sort--asc]="m.asc"
+                  >
+                    <rp-icon name="chevron-down" [size]="14" />
+                  </span>
+                </button>
+              } @else {
+                {{ col.header }}
               }
             </div>
           }
@@ -146,11 +165,15 @@ import {
             class="rp-dt__vrow"
             *cdkVirtualFor="let row of filtered()"
             [style.height.px]="itemSize()"
-            (click)="rowClick.emit(row)"
           >
             @if (selectable()) {
-              <div class="rp-dt__vcell rp-dt__check-col" (click)="$event.stopPropagation()">
-                <input type="checkbox" [checked]="isSelected(row)" (change)="toggleRow(row)" />
+              <div class="rp-dt__vcell rp-dt__check-col">
+                <input
+                  type="checkbox"
+                  aria-label="Select row"
+                  [checked]="isSelected(row)"
+                  (change)="toggleRow(row)"
+                />
               </div>
             }
             @for (col of visibleColumns(); track col.key) {
@@ -188,6 +211,7 @@ import {
                 <th class="rp-dt__check-col">
                   <input
                     type="checkbox"
+                    aria-label="Select all rows on this page"
                     [checked]="allOnPageSelected()"
                     [indeterminate]="someOnPageSelected()"
                     (change)="toggleAll($event)"
@@ -201,12 +225,12 @@ import {
                 <th
                   [class]="thClass(col)"
                   [style.width]="colWidth(col)"
-                  (click)="col.sortable && toggleSort(col, $event)"
+                  [attr.aria-sort]="ariaSort(col)"
                 >
-                  <span class="rp-dt__th">
-                    {{ col.header }}
-                    @if (col.sortable) {
-                      @let m = sortMeta(col);
+                  @if (col.sortable) {
+                    @let m = sortMeta(col);
+                    <button type="button" class="rp-dt__th rp-dt__th-btn" (click)="toggleSort(col, $event)">
+                      {{ col.header }}
                       <span
                         class="rp-dt__sort"
                         [class.rp-dt__sort--active]="m.active"
@@ -217,13 +241,15 @@ import {
                           <sup class="rp-dt__sortorder">{{ m.order }}</sup>
                         }
                       </span>
-                    }
-                  </span>
+                    </button>
+                  } @else {
+                    <span class="rp-dt__th">{{ col.header }}</span>
+                  }
                   @if (resizable()) {
                     <span
                       class="rp-dt__resize"
+                      aria-hidden="true"
                       (mousedown)="startResize(col, $event)"
-                      (click)="$event.stopPropagation()"
                     ></span>
                   }
                 </th>
@@ -272,14 +298,19 @@ import {
               </tr>
             } @else {
               @for (row of pageRows(); track $index) {
-                <tr class="rp-dt__row" (click)="rowClick.emit(row)">
+                <tr class="rp-dt__row">
                   @if (selectable()) {
-                    <td class="rp-dt__check-col" (click)="$event.stopPropagation()">
-                      <input type="checkbox" [checked]="isSelected(row)" (change)="toggleRow(row)" />
+                    <td class="rp-dt__check-col">
+                      <input
+                        type="checkbox"
+                        aria-label="Select row"
+                        [checked]="isSelected(row)"
+                        (change)="toggleRow(row)"
+                      />
                     </td>
                   }
                   @if (expandable()) {
-                    <td class="rp-dt__expand-col" (click)="$event.stopPropagation()">
+                    <td class="rp-dt__expand-col">
                       <button
                         class="rp-dt__expand"
                         type="button"
@@ -586,6 +617,27 @@ import {
         align-items: center;
         gap: 4px;
       }
+      /* Sortable header trigger — native button reset so it's keyboard-focusable
+         while looking like a plain header cell. */
+      .rp-dt__th-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        letter-spacing: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .rp-dt__th-btn:focus-visible {
+        outline: 2px solid var(--rp-brand);
+        outline-offset: 2px;
+        border-radius: var(--rp-radius-sm);
+      }
       .rp-dt__sort {
         display: inline-flex;
         align-items: center;
@@ -625,7 +677,6 @@ import {
       }
       .rp-dt__row:hover td {
         background: var(--rp-surface-sunken);
-        cursor: pointer;
       }
       .rp-dt__state {
         text-align: center;
@@ -694,7 +745,6 @@ import {
       }
       .rp-dt__vrow:hover {
         background: var(--rp-surface-sunken);
-        cursor: pointer;
       }
       .rp-dt__vcell {
         display: flex;
@@ -783,6 +833,12 @@ import {
 export class RpDataTable<T extends Record<string, unknown> = Record<string, unknown>> {
   readonly columns = input<RpColumnDef<T>[]>([]);
   readonly rows = input<T[]>([]);
+  /**
+   * Stable identity for a row. Provide this whenever the data can be replaced
+   * with a new array reference (server paging, refetch) so selection/expansion
+   * survive. Falls back to object identity when not supplied.
+   */
+  readonly rowId = input<(row: T) => string | number>();
   readonly loading = input<boolean>(false);
   readonly mode = input<RpTableMode>('client');
   /** Total row count across all pages — required in server mode. */
@@ -808,8 +864,9 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   readonly viewportHeight = input<string>('480px');
 
   readonly queryChange = output<RpTableQuery>();
-  readonly rowClick = output<T>();
   readonly selectionChange = output<T[]>();
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly cellDefs = contentChildren(RpCellDef);
   private readonly cellTemplates = computed(() => {
@@ -824,8 +881,9 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   protected readonly filters = signal<Record<string, string>>({});
   protected readonly page = signal(1);
   protected readonly pageSize = signal(10);
-  private readonly selected = signal<Set<T>>(new Set<T>());
-  private readonly expanded = signal<Set<T>>(new Set<T>());
+  /** Keyed by rowId (or the row object itself when no rowId is provided). */
+  private readonly selected = signal<Map<unknown, T>>(new Map());
+  private readonly expanded = signal<Set<unknown>>(new Set());
   private readonly hidden = signal<Set<string>>(new Set<string>());
   private readonly order = signal<string[] | null>(null);
   private readonly colWidths = signal<Record<string, string>>({});
@@ -834,6 +892,12 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   protected readonly multiSortActive = computed(() => this.sort().length > 1);
   protected readonly hasFilters = computed(() => this.visibleColumns().some((c) => !!c.filter));
   protected readonly selectedCount = computed(() => this.selected().size);
+
+  /** Stable key for a row — the rowId accessor if given, else the row itself. */
+  private keyOf(row: T): unknown {
+    const id = this.rowId();
+    return id ? id(row) : row;
+  }
 
   /** All columns in current display order (includes hidden ones — for the menu). */
   protected readonly orderedAllColumns = computed<RpColumnDef<T>[]>(() => {
@@ -861,8 +925,10 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
 
     const q = this.search().trim().toLowerCase();
     if (q) {
+      // Search across ALL columns (including hidden ones), not just visible.
+      const cols = this.columns();
       data = data.filter((row) =>
-        this.visibleColumns().some((c) => this.cellValue(row, c).toLowerCase().includes(q))
+        cols.some((c) => this.cellValue(row, c).toLowerCase().includes(q))
       );
     }
 
@@ -878,17 +944,37 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
     if (sorts.length) {
       data = [...data].sort((a, b) => {
         for (const s of sorts) {
-          const av = a[s.key] as unknown as string | number;
-          const bv = b[s.key] as unknown as string | number;
-          if (av === bv) continue;
-          const cmp = av > bv ? 1 : -1;
-          return s.dir === 'asc' ? cmp : -cmp;
+          const cmp = this.compareValues(a[s.key], b[s.key]);
+          if (cmp !== 0) return s.dir === 'asc' ? cmp : -cmp;
         }
         return 0;
       });
     }
     return data;
   });
+
+  /**
+   * Type-aware comparison used for sorting: numbers numerically, dates by
+   * timestamp, everything else as locale-aware strings (with numeric collation
+   * so "item 2" < "item 10"). Null/undefined always sort last.
+   */
+  private compareValues(a: unknown, b: unknown): number {
+    if (a === b) return 0;
+    const aNull = a == null;
+    const bNull = b == null;
+    if (aNull || bNull) return aNull ? 1 : -1; // nulls last
+
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+
+    if (a instanceof Date || b instanceof Date) {
+      return new Date(a as Date).getTime() - new Date(b as Date).getTime();
+    }
+
+    return String(a).localeCompare(String(b), undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
+  }
 
   protected readonly total = computed(() =>
     this.mode() === 'server' ? this.totalCount() : this.filtered().length
@@ -912,12 +998,12 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   protected readonly allOnPageSelected = computed(() => {
     const p = this.pageRows();
     const sel = this.selected();
-    return p.length > 0 && p.every((r) => sel.has(r));
+    return p.length > 0 && p.every((r) => sel.has(this.keyOf(r)));
   });
   protected readonly someOnPageSelected = computed(() => {
     const p = this.pageRows();
     const sel = this.selected();
-    const n = p.filter((r) => sel.has(r)).length;
+    const n = p.filter((r) => sel.has(this.keyOf(r))).length;
     return n > 0 && n < p.length;
   });
 
@@ -963,45 +1049,71 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   }
 
   protected isSelected(row: T): boolean {
-    return this.selected().has(row);
+    return this.selected().has(this.keyOf(row));
   }
   protected isExpanded(row: T): boolean {
-    return this.expanded().has(row);
+    return this.expanded().has(this.keyOf(row));
   }
   protected isHidden(key: string): boolean {
     return this.hidden().has(key);
   }
 
   protected toggleRow(row: T): void {
-    const next = new Set(this.selected());
-    next.has(row) ? next.delete(row) : next.add(row);
+    const next = new Map(this.selected());
+    const k = this.keyOf(row);
+    if (next.has(k)) next.delete(k);
+    else next.set(k, row);
     this.selected.set(next);
-    this.selectionChange.emit([...next]);
+    this.selectionChange.emit([...next.values()]);
   }
   protected toggleAll(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
-    const next = new Set(this.selected());
-    for (const r of this.pageRows()) checked ? next.add(r) : next.delete(r);
+    const next = new Map(this.selected());
+    for (const r of this.pageRows()) {
+      const k = this.keyOf(r);
+      if (checked) next.set(k, r);
+      else next.delete(k);
+    }
     this.selected.set(next);
-    this.selectionChange.emit([...next]);
+    this.selectionChange.emit([...next.values()]);
   }
   protected clearSelection(): void {
-    this.selected.set(new Set<T>());
+    this.selected.set(new Map());
     this.selectionChange.emit([]);
   }
   protected toggleExpand(row: T): void {
     const next = new Set(this.expanded());
-    next.has(row) ? next.delete(row) : next.add(row);
+    const k = this.keyOf(row);
+    if (next.has(k)) next.delete(k);
+    else next.add(k);
     this.expanded.set(next);
   }
 
   protected toggleColMenu(): void {
     this.colMenuOpen.update((v) => !v);
   }
+  protected closeColMenu(): void {
+    if (this.colMenuOpen()) this.colMenuOpen.set(false);
+  }
+  /** Close the column menu when a click lands outside it. */
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.colMenuOpen()) return;
+    const wrap = this.host.nativeElement.querySelector('.rp-dt__colmenu-wrap');
+    if (wrap && !wrap.contains(event.target as Node)) this.closeColMenu();
+  }
   protected toggleColumn(key: string): void {
     const next = new Set(this.hidden());
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     this.hidden.set(next);
+  }
+
+  /** aria-sort value for a column header. */
+  protected ariaSort(col: RpColumnDef<T>): 'ascending' | 'descending' | 'none' | null {
+    if (!col.sortable) return null;
+    const m = this.sortMeta(col);
+    if (!m.active) return 'none';
+    return m.asc ? 'ascending' : 'descending';
   }
   protected moveColumn(key: string, dir: -1 | 1): void {
     const keys = this.orderedAllColumns().map((c) => c.key);

@@ -4,6 +4,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'rp-form-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control --
+         The form control is content-projected via <ng-content>; this wrapping
+         <label> implicitly associates it (valid HTML label nesting). -->
     <label class="rp-field">
       @if (label()) {
         <span class="rp-field__label">
