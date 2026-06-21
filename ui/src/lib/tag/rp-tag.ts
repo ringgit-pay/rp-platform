@@ -5,7 +5,12 @@ export type RpTagColor = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' 
 @Component({
   selector: 'rp-tag',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span [class]="classes()"><ng-content /></span>`,
+  template: `<span [class]="classes()">
+    @if (dot()) {
+      <span class="rp-tag__dot" aria-hidden="true"></span>
+    }
+    <ng-content />
+  </span>`,
   styles: [
     `
       :host {
@@ -20,6 +25,19 @@ export type RpTagColor = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' 
         font-size: var(--rp-font-size-xs);
         font-weight: var(--rp-font-weight-medium);
         border: 1px solid transparent;
+      }
+      /* Dotted status variant renders as a pill with a leading status dot. */
+      .rp-tag--dot {
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: var(--rp-radius-full);
+      }
+      .rp-tag__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        flex-shrink: 0;
       }
       .rp-tag--neutral {
         background: var(--rp-surface-sunken);
@@ -50,5 +68,11 @@ export type RpTagColor = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' 
 })
 export class RpTag {
   readonly color = input<RpTagColor>('neutral');
-  protected readonly classes = computed(() => `rp-tag rp-tag--${this.color()}`);
+  /** Render a leading status dot and a fully-rounded pill shape. */
+  readonly dot = input(false);
+  protected readonly classes = computed(() =>
+    ['rp-tag', `rp-tag--${this.color()}`, this.dot() ? 'rp-tag--dot' : '']
+      .filter(Boolean)
+      .join(' ')
+  );
 }

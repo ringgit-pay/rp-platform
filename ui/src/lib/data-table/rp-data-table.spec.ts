@@ -200,4 +200,43 @@ describe('RpDataTable', () => {
       );
     });
   });
+
+  describe('badge column', () => {
+    it('renders a type:badge column as toned status pills', () => {
+      fixture = TestBed.createComponent(RpDataTable<Row>);
+      el = fixture.nativeElement as HTMLElement;
+      fixture.componentRef.setInput('columns', [
+        { key: 'name', header: 'Name' },
+        { key: 'status', header: 'Status', type: 'badge' },
+      ]);
+      fixture.componentRef.setInput('rows', [
+        { id: 1, name: 'A', status: 'Active' },
+        { id: 2, name: 'B', status: 'Terminated' },
+        { id: 3, name: 'C', status: 'Mystery' },
+      ]);
+      fixture.detectChanges();
+
+      const cells = el.querySelectorAll('td[data-label="Status"]');
+      // built-in map: active -> success, terminated -> danger, unknown -> neutral
+      expect(cells[0].querySelector('.rp-tag--success')).toBeTruthy();
+      expect(cells[0].querySelector('.rp-tag--dot')).toBeTruthy();
+      expect(cells[1].querySelector('.rp-tag--danger')).toBeTruthy();
+      expect(cells[2].querySelector('.rp-tag--neutral')).toBeTruthy();
+      expect((cells[0].textContent ?? '').trim()).toBe('Active');
+    });
+
+    it('honours a custom badgeTone override', () => {
+      fixture = TestBed.createComponent(RpDataTable<Row>);
+      el = fixture.nativeElement as HTMLElement;
+      fixture.componentRef.setInput('columns', [
+        { key: 'name', header: 'Name' },
+        { key: 'status', header: 'Status', type: 'badge', badgeTone: () => 'brand' },
+      ]);
+      fixture.componentRef.setInput('rows', [{ id: 1, name: 'A', status: 'Active' }]);
+      fixture.detectChanges();
+
+      const cell = el.querySelector('td[data-label="Status"]');
+      expect(cell?.querySelector('.rp-tag--brand')).toBeTruthy();
+    });
+  });
 });

@@ -16,6 +16,7 @@ import {
 import { RpIcon } from '../icon/rp-icon';
 import { RpSpinner } from '../spinner/rp-spinner';
 import { RpEmptyState } from '../empty-state/rp-empty-state';
+import { RpTag, RpTagColor } from '../tag/rp-tag';
 import { RpCellDef } from './rp-cell-def.directive';
 import { RpRowDetailDef } from './rp-row-detail.directive';
 import {
@@ -33,7 +34,7 @@ import {
     '(document:click)': 'onDocumentClick($event)',
     '(keydown.escape)': 'closeColMenu()',
   },
-  imports: [RpIcon, RpSpinner, RpEmptyState, NgTemplateOutlet, ScrollingModule],
+  imports: [RpIcon, RpSpinner, RpEmptyState, RpTag, NgTemplateOutlet, ScrollingModule],
   template: `
     <div class="rp-dt">
       @if (searchable() || columnManager() || exportable()) {
@@ -187,6 +188,8 @@ import {
                       col: col
                     }"
                   />
+                } @else if (col.type === 'badge') {
+                  <rp-tag [color]="badgeTone(col, row)" [dot]="true">{{ cellValue(row, col) }}</rp-tag>
                 } @else {
                   {{ cellValue(row, col) }}
                 }
@@ -333,6 +336,8 @@ import {
                             col: col
                           }"
                         />
+                      } @else if (col.type === 'badge') {
+                        <rp-tag [color]="badgeTone(col, row)" [dot]="true">{{ cellValue(row, col) }}</rp-tag>
                       } @else {
                         {{ cellValue(row, col) }}
                       }
@@ -536,7 +541,7 @@ import {
       .rp-dt__table th,
       .rp-dt__table td {
         text-align: left;
-        padding: 10px 14px;
+        padding: 12px 14px;
         border-bottom: 1px solid var(--rp-border);
         color: var(--rp-text);
         white-space: nowrap;
@@ -1010,6 +1015,32 @@ export class RpDataTable<T extends Record<string, unknown> = Record<string, unkn
   protected cellValue(row: T, col: RpColumnDef<T>): string {
     const v = col.cell ? col.cell(row) : row[col.key];
     return v == null ? '' : String(v);
+  }
+
+  /** Built-in status value → badge tone map (case-insensitive). */
+  private static readonly STATUS_TONES: Record<string, RpTagColor> = {
+    active: 'success',
+    paid: 'success',
+    completed: 'success',
+    approved: 'success',
+    success: 'success',
+    pending: 'info',
+    scheduled: 'info',
+    processing: 'info',
+    overdue: 'warning',
+    warning: 'warning',
+    terminated: 'danger',
+    failed: 'danger',
+    rejected: 'danger',
+    cancelled: 'danger',
+    inactive: 'neutral',
+    draft: 'neutral',
+    closed: 'neutral',
+  };
+  protected badgeTone(col: RpColumnDef<T>, row: T): RpTagColor {
+    const value = this.cellValue(row, col);
+    if (col.badgeTone) return col.badgeTone(value, row);
+    return RpDataTable.STATUS_TONES[value.trim().toLowerCase()] ?? 'neutral';
   }
   protected cellTemplate(key: string): TemplateRef<unknown> | null {
     return this.cellTemplates().get(key) ?? null;
