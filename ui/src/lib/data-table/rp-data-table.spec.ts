@@ -1,5 +1,7 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RpDataTable } from './rp-data-table';
+import { RpRowDetailDef } from './rp-row-detail.directive';
 import { RpColumnDef } from './rp-data-table.types';
 
 type Row = Record<string, unknown>;
@@ -238,5 +240,38 @@ describe('RpDataTable', () => {
       const cell = el.querySelector('td[data-label="Status"]');
       expect(cell?.querySelector('.rp-tag--brand')).toBeTruthy();
     });
+  });
+});
+
+@Component({
+  imports: [RpDataTable, RpRowDetailDef],
+  template: `
+    <rp-data-table [columns]="cols" [rows]="data" [rowId]="id" [expandable]="true">
+      <ng-template rpRowDetail let-row>
+        <div class="detail-content">Detail for {{ row.name }}</div>
+      </ng-template>
+    </rp-data-table>
+  `,
+})
+class DetailHost {
+  readonly cols: RpColumnDef<Row>[] = [{ key: 'name', header: 'Name' }];
+  readonly data: Row[] = [{ id: 1, name: 'Ahmad' }];
+  readonly id = (r: Row) => r['id'] as number;
+}
+
+describe('RpDataTable row detail', () => {
+  it('frames projected rpRowDetail content in an inset panel when expanded', () => {
+    const fixture = TestBed.createComponent(DetailHost);
+    const el = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+
+    expect(el.querySelector('.rp-dt__detail-panel')).toBeNull();
+
+    (el.querySelector('.rp-dt__expand') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const panel = el.querySelector('.rp-dt__detail-panel');
+    expect(panel).toBeTruthy();
+    expect(panel?.querySelector('.detail-content')?.textContent).toContain('Ahmad');
   });
 });

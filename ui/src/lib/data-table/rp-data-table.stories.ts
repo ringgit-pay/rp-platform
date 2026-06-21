@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { moduleMetadata } from '@storybook/angular';
 import { RpDataTable } from './rp-data-table';
 import { RpCellDef } from './rp-cell-def.directive';
+import { RpRowDetailDef } from './rp-row-detail.directive';
 import { RpColumnDef } from './rp-data-table.types';
 
 interface Dda extends Record<string, unknown> {
@@ -49,7 +50,7 @@ const meta: Meta<RpDataTable<Dda>> = {
   title: 'Components/Data table',
   component: RpDataTable,
   tags: ['autodocs'],
-  decorators: [moduleMetadata({ imports: [RpDataTable, RpCellDef] })],
+  decorators: [moduleMetadata({ imports: [RpDataTable, RpCellDef, RpRowDetailDef] })],
 };
 export default meta;
 
@@ -97,6 +98,34 @@ export const Dense: Story = {
       <rp-data-table [columns]="columns" [rows]="rows" [rowId]="rowId"
         density="compact" [striped]="true">
         ${airyCells}
+      </rp-data-table>
+    `,
+  }),
+};
+
+// The component frames the projected rpRowDetail in an inset panel; the consumer
+// supplies a label/value grid + actions (the recommended detail pattern).
+const detailGrid = `
+  <ng-template rpRowDetail let-row>
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px 24px">
+      <div><div style="font-size:var(--rp-font-size-xs);color:var(--rp-text-subtle)">Email</div><div>{{ row.email }}</div></div>
+      <div><div style="font-size:var(--rp-font-size-xs);color:var(--rp-text-subtle)">Bank</div><div>{{ row.bank }}</div></div>
+      <div><div style="font-size:var(--rp-font-size-xs);color:var(--rp-text-subtle)">Frequency</div><div>{{ row.frequency }}</div></div>
+      <div><div style="font-size:var(--rp-font-size-xs);color:var(--rp-text-subtle)">Status</div><div>{{ row.status }}</div></div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <a href="#" style="color:var(--rp-brand);font-weight:var(--rp-font-weight-medium);text-decoration:none">View mandate</a>
+      </div>
+    </div>
+  </ng-template>
+`;
+
+export const Expandable: Story = {
+  render: () => ({
+    props: { columns, rows, rowId: (r: Dda) => r.ref },
+    template: `
+      <rp-data-table [columns]="columns" [rows]="rows" [rowId]="rowId" [expandable]="true">
+        ${airyCells}
+        ${detailGrid}
       </rp-data-table>
     `,
   }),

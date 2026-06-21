@@ -326,7 +326,11 @@ import {
                     </td>
                   }
                   @for (col of visibleColumns(); track col.key) {
-                    <td [class]="tdClass(col)" [attr.data-label]="col.header">
+                    <td
+                      [class]="tdClass(col)"
+                      [class.rp-dt__col--primary]="$first"
+                      [attr.data-label]="col.header"
+                    >
                       @if (cellTemplate(col.key); as tpl) {
                         <ng-container
                           [ngTemplateOutlet]="tpl"
@@ -348,10 +352,12 @@ import {
                   <tr class="rp-dt__detail">
                     <td [attr.colspan]="colCount()">
                       @if (rowDetail(); as tpl) {
-                        <ng-container
-                          [ngTemplateOutlet]="tpl"
-                          [ngTemplateOutletContext]="{ $implicit: row }"
-                        />
+                        <div class="rp-dt__detail-panel">
+                          <ng-container
+                            [ngTemplateOutlet]="tpl"
+                            [ngTemplateOutletContext]="{ $implicit: row }"
+                          />
+                        </div>
                       }
                     </td>
                   </tr>
@@ -657,8 +663,28 @@ import {
       }
       .rp-dt__detail td {
         background: var(--rp-surface-muted);
-        padding: 14px 18px;
+        padding: 0 14px 14px;
         white-space: normal;
+      }
+      /* Inset panel framing the projected row-detail content. */
+      .rp-dt__detail-panel {
+        position: relative;
+        background: var(--rp-surface);
+        border: 1px solid var(--rp-border);
+        border-radius: var(--rp-radius-lg);
+        padding: 14px 16px 14px 20px;
+        color: var(--rp-text);
+        font-size: var(--rp-font-size-base);
+      }
+      .rp-dt__detail-panel::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        border-radius: 99px;
+        background: var(--rp-brand);
       }
       .rp-dt__col--sortable {
         cursor: pointer;
@@ -853,35 +879,62 @@ import {
           display: block;
           width: auto !important;
         }
+        /* Each row becomes a card. */
         .rp-dt__table tr.rp-dt__row {
           border: 1px solid var(--rp-border);
-          border-radius: var(--rp-radius-md);
+          border-radius: var(--rp-radius-lg);
           margin: 10px;
-          padding: 4px 0;
+          padding: 8px 12px 10px;
+          background: var(--rp-surface);
         }
-        .rp-dt__table td {
+        /* Checkbox + chevron sit inline at the top of the card. */
+        .rp-dt__row td.rp-dt__check-col,
+        .rp-dt__row td.rp-dt__expand-col {
+          display: inline-flex;
+          width: auto;
+          padding: 4px 8px 0 0;
+          border-bottom: 0;
+        }
+        .rp-dt__check-col::before,
+        .rp-dt__expand-col::before {
+          content: none !important;
+        }
+        /* Remaining cells become label : value rows. */
+        .rp-dt__row td {
           display: flex;
           justify-content: space-between;
           gap: 16px;
+          padding: 8px 0;
           border-bottom: 1px solid var(--rp-border);
           white-space: normal;
           text-align: right;
         }
-        .rp-dt__table tr.rp-dt__row td:last-child {
+        .rp-dt__row td:last-child {
           border-bottom: 0;
         }
-        .rp-dt__table td.rp-dt__col--hide-mobile {
+        .rp-dt__row td.rp-dt__col--hide-mobile {
           display: none;
         }
-        .rp-dt__table td::before {
+        .rp-dt__row td::before {
           content: attr(data-label);
           font-weight: var(--rp-font-weight-medium);
           color: var(--rp-text-muted);
           text-align: left;
         }
-        .rp-dt__check-col,
-        .rp-dt__expand-col {
+        /* First column is the card title. */
+        .rp-dt__row td.rp-dt__col--primary {
           text-align: left;
+          padding-top: 2px;
+          font-size: var(--rp-font-size-lg);
+          font-weight: var(--rp-font-weight-medium);
+          color: var(--rp-text);
+        }
+        .rp-dt__row td.rp-dt__col--primary::before {
+          content: none;
+        }
+        /* Expanded detail sits as a panel tucked under the card. */
+        .rp-dt__detail td {
+          padding: 0 10px 10px;
         }
       }
     `,
