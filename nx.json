@@ -42,7 +42,8 @@
         "^production",
         "{projectRoot}/.storybook/**/*",
         "{projectRoot}/tsconfig.storybook.json"
-      ]
+      ],
+      "outputs": ["{options.outputDir}"]
     },
     "@angular/build:application": {
       "cache": true,

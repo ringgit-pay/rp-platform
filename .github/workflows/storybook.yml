@@ -1,0 +1,59 @@
+name: Deploy Storybook
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: storybook-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # @rp/* packages come from the private registry.
+          # Once the registry URL is set, uncomment these two lines:
+          # registry-url: https://REPLACE-ME.private-registry.example/
+          # scope: '@rp'
+
+      - name: Install dependencies
+        # env:
+        #   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm ci
+
+      - name: Build design tokens
+        run: npm run tokens
+
+      - name: Build Storybook
+        run: npx nx run ui:build-storybook --configuration=ci
+        # Output: dist/storybook/ui/
+
+      - name: Deploy to server via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: dist/storybook/ui/
+          target: ${{ secrets.SSH_TARGET_PATH }}
+          strip_components: 3
+          # strip_components: 3 removes "dist/storybook/ui/" prefix so files
+          # land directly in SSH_TARGET_PATH (e.g. /var/www/rp-storybook/)
+
+      - name: Reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: sudo systemctl reload nginx
