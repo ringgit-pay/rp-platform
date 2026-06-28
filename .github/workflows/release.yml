@@ -30,9 +30,9 @@ jobs:
         run: npm run tokens
       - name: Build libraries
         run: |
-          npx nx run design:build:production
-          npx nx run util:build:production
-          npx nx run ui:build:production
+          npx nx run design:build:production --skip-nx-cache
+          npx nx run util:build:production --skip-nx-cache
+          npx nx run ui:build:production --skip-nx-cache
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
