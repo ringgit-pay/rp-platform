@@ -16,6 +16,9 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,7 +38,7 @@ jobs:
           npx nx run ui:build:production --skip-nx-cache
       - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for p in design util ui; do
             npm publish "dist/libs/shared/$p" --tag "${{ inputs.dist-tag }}"
