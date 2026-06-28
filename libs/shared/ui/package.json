@@ -8,5 +8,8 @@
     "@angular/forms": "^21.2.0",
     "@rp/util": "^0.1.0"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "sideEffects": false
 }
